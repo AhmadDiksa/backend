@@ -42,7 +42,7 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`
   ╔══════════════════════════════════════════╗
   ║  AI Chat Backend running on port ${PORT}   ║
