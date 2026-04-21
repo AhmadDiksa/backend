@@ -11,6 +11,6 @@ RUN npm ci --omit=dev --legacy-peer-deps
 # Salin source code
 COPY src ./src
 
-EXPOSE 3001
+
 
 CMD ["node", "src/server.js"]
