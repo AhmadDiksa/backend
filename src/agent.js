@@ -80,34 +80,42 @@ async function executeTool(toolCall) {
  * @param {Function} onTool     - Called when a tool is invoked { name, args, result }
  * @param {Function} onDone     - Called with final complete text
  */
+const llmCache = {};
+
 export async function runAgent(history, onChunk, onTool, onDone, provider = 'anthropic', model) {
-  let rawLlm;
-  if (provider === 'openrouter') {
-    logger.info(`Initializing OpenRouter with model: ${model || 'meta-llama/llama-3.3-70b-instruct'}`);
-    rawLlm = new LangChainOpenAI({
-      model: model || 'meta-llama/llama-3.3-70b-instruct',
-      temperature: 0.1,
-      configuration: {
-        baseURL: 'https://openrouter.ai/api/v1',
-        apiKey: process.env.OPENROUTER_API_KEY,
-      },
-    });
-  } else if (provider === 'gemini') {
-    logger.info(`Initializing Gemini with model: ${model || 'gemini-2.5-flash'}`);
-    rawLlm = new ChatGoogleGenerativeAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      model: model || 'gemini-2.5-flash',
-      temperature: 0.1,
-      // includeThoughts is required for reasoning models (2.5+) in newer SDKs
-      includeThoughts: true,
-    });
+  const cacheKey = `${provider}:${model || 'default'}`;
+  let rawLlm = llmCache[cacheKey];
+
+  if (!rawLlm) {
+    if (provider === 'openrouter') {
+      logger.info(`Initializing OpenRouter with model: ${model || 'meta-llama/llama-3.3-70b-instruct'}`);
+      rawLlm = new LangChainOpenAI({
+        model: model || 'meta-llama/llama-3.3-70b-instruct',
+        temperature: 0.1,
+        configuration: {
+          baseURL: 'https://openrouter.ai/api/v1',
+          apiKey: process.env.OPENROUTER_API_KEY,
+        },
+      });
+    } else if (provider === 'gemini') {
+      logger.info(`Initializing Gemini with model: ${model || 'gemini-2.5-flash'}`);
+      rawLlm = new ChatGoogleGenerativeAI({
+        apiKey: process.env.GEMINI_API_KEY,
+        model: model || 'gemini-2.5-flash',
+        temperature: 0.1,
+        includeThoughts: true,
+      });
+    } else {
+      logger.info(`Initializing Anthropic with model: ${model || 'claude-3-5-sonnet-20241022'}`);
+      rawLlm = new LangChainAnthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+        model: model || 'claude-3-5-sonnet-20241022',
+        maxTokens: 2048,
+      });
+    }
+    llmCache[cacheKey] = rawLlm;
   } else {
-    logger.info(`Initializing Anthropic with model: ${model || 'claude-3-5-sonnet-20241022'}`);
-    rawLlm = new LangChainAnthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY,
-      model: model || 'claude-3-5-sonnet-20241022',
-      maxTokens: 2048,
-    });
+    logger.info(`Using cached ${provider} instance for model: ${model || 'default'}`);
   }
 
   const llm = rawLlm.bindTools(restaurantTools);
